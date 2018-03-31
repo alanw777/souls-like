@@ -16,6 +16,7 @@ namespace AW
         public Vector3 moveDir;
         public bool rt, rb, lt, lb;
         public bool rollInput;
+        public bool itemInput;
 
         [Header("Stats")] 
         public float moveSpeed = 2;
@@ -23,6 +24,7 @@ namespace AW
         public float rotateSpeed = 5;
         public float toGround = 0.5f;
         public float rollSpeed = 1;
+        public float parriedOffset = 1.4f;
 
         [Header("States")] 
         public bool onGround;
@@ -31,20 +33,31 @@ namespace AW
         public bool inAction;
         public bool canMove;
         public bool isTwoHanded;
+        public bool usingItem;
+        public bool isBlocking;
+        public bool isLeftHand;
+        public bool canBeParried;
+        public bool parryIsOn;
 
         [Header("Other")] 
         public EnemyTarget lockOnTarget;
+        public Transform LockonTransform;
+        public AnimationCurve roll_curve;
+        //public EnemyStates parryTarget;
 
-        [HideInInspector]
-        public float delta;
-        [HideInInspector]
-        public Animator anim;
-        [HideInInspector]
-        public Rigidbody rigid;
-        [HideInInspector]
-        public LayerMask ignoreLayers;
-        [HideInInspector]
-        public AnimatorHook a_hook;
+        [HideInInspector] public float delta;
+
+        [HideInInspector] public Animator anim;
+
+        [HideInInspector] public Rigidbody rigid;
+
+        [HideInInspector] public LayerMask ignoreLayers;
+
+        [HideInInspector] public AnimatorHook a_hook;
+
+        [HideInInspector] public ActionManager actionManager;
+
+        [HideInInspector] public InventoryManager inventoryManager;
 
         private float _actionDelay;
 
@@ -56,8 +69,17 @@ namespace AW
             rigid.drag = 4;
             rigid.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
 
-            a_hook = activeModel.AddComponent<AnimatorHook>();
-            a_hook.Init(this);
+            inventoryManager = GetComponent<InventoryManager>();
+            inventoryManager.Init(this);
+
+            actionManager = GetComponent<ActionManager>();
+            actionManager.Init(this);
+
+            a_hook = activeModel.GetComponent<AnimatorHook>();
+            if(a_hook==null)
+                a_hook = activeModel.AddComponent<AnimatorHook>();
+            a_hook.Init(this,null);
+
 
             gameObject.layer = 8;
             ignoreLayers = ~(1 << 9);
@@ -90,7 +112,16 @@ namespace AW
         {
             delta = d;
 
+            isBlocking = false;
+            usingItem = anim.GetBool("interacting");
             DetectAction();
+            DetectItemAction();
+          
+            inventoryManager.rightHandWeapen.weapenModel.SetActive(!usingItem);
+
+            anim.SetBool("blocking",isBlocking);
+            anim.SetBool("isLeft",isLeftHand);
+
             if (inAction)
             {
                 anim.applyRootMotion = true;
@@ -111,7 +142,7 @@ namespace AW
             if(!canMove)
                 return;
 
-            a_hook.rm_multi = 1;
+            a_hook.CloseRoll();
             HandleRolls();
             
 
@@ -119,14 +150,30 @@ namespace AW
 
             rigid.drag = (moveAmount > 0 || onGround==false) ? 0 : 4;
             float targetSpeed = moveSpeed;
+            if (usingItem)
+            {
+                run = false;
+                moveAmount = Mathf.Clamp(moveAmount, 0, 0.5f);
+            }
+               
             if (run)
                 targetSpeed = runSpeed;
             if(onGround)
                 rigid.velocity = moveDir * (targetSpeed*moveAmount);
             if (run)
                 lockOn = false;
-            
-            Vector3 targetDir = lockOn ? lockOnTarget.transform.position - transform.position : moveDir;
+
+            Vector3 targetDir;
+            if (lockOn == false)
+                targetDir = moveDir;
+            else
+            {
+                if (LockonTransform != null)
+                    targetDir = LockonTransform.transform.position - transform.position;
+                else
+                    targetDir = moveDir;
+            }
+
             targetDir.y = 0;
             if (targetDir == Vector3.zero)
                 targetDir = transform.forward;
@@ -135,7 +182,6 @@ namespace AW
             transform.rotation = targetRotation;
 
             anim.SetBool("lockon",lockOn);
-
             if (lockOn)
                 HandleLockonAnimations(moveDir);
             else
@@ -144,31 +190,197 @@ namespace AW
 
         }
 
+        void DetectItemAction()
+        {
+            if(canMove==false||usingItem||isBlocking)
+                return;
+            if(itemInput==false)
+                return;
+            ItemAction slot = actionManager.consumableAction;
+            string targetAnim = slot.targetAnim;
+            if(string.IsNullOrEmpty(targetAnim))
+                return;
+            usingItem = true;
+            anim.Play(targetAnim);
+        }
+
         void DetectAction()
         {
-            if(canMove==false)
+            if(canMove==false || usingItem)
                 return;
 
             if(rt==false && rb==false && lt==false && lb==false)
                 return;
 
-            string targetAnim = null;
-            if (rt)
-                targetAnim = "oh_attack_1";
-            if (rb)
-                targetAnim = "oh_attack_2";
-            if (lt)
-                targetAnim = "oh_attack_3";
-            if (lb)
-                targetAnim = "th_attack_1";
+            Action slot = actionManager.GetActionSlot(this);
+            if (slot == null)
+                return;
+            switch (slot.type)
+            {
+                case ActionType.attack:
+                    AttackAction(slot);
+                    break;
+                case ActionType.block:
+                    BlockAction(slot);
+                    break;
+                case ActionType.spells:
+                    break;
+                case ActionType.parry:
+                    ParryAction(slot);
+                    break;
+                default:
+                    break;
+            }
+            
 
-            if(string.IsNullOrEmpty(targetAnim))
+        }
+
+        void AttackAction(Action slot)
+        {
+            if(CheckForParry(slot))
+                return;
+
+            if(CheckForBackstab(slot))
+                return;
+            
+            string targetAnim = null;
+            
+            targetAnim = slot.targetAnim;
+
+            if (string.IsNullOrEmpty(targetAnim))
                 return;
 
             canMove = false;
             inAction = true;
-            anim.CrossFade(targetAnim,0.2f);
+            canBeParried = slot.canBenParried;
+            float targetSpeed = 1;
+            if (slot.changeSpeed)
+            {
+                targetSpeed = slot.animSpeed;
+                if (targetSpeed == 0)
+                    targetSpeed = 1;
+            }
+            anim.SetFloat("animSpeed",targetSpeed);
+            anim.SetBool("mirror", slot.mirror);
+            anim.CrossFade(targetAnim, 0.2f);
+        }
 
+        bool CheckForParry(Action slot)
+        {
+            EnemyStates parryTarget = null;
+            Vector3 origin = transform.position;
+            origin.y += 1;
+            Vector3 rayDir = transform.forward;
+            RaycastHit hit;
+            if (Physics.Raycast(origin, rayDir, out hit, 3, ignoreLayers))
+            {
+                parryTarget = hit.transform.GetComponentInParent<EnemyStates>();
+            }
+
+            if (parryTarget == null)
+                return false;
+
+            if (parryTarget.parriedBy == null)
+                return false;
+
+            Vector3 dir = parryTarget.transform.position - transform.position;
+            dir.Normalize();
+            dir.y = 0;
+            float angle = Vector3.Angle(transform.forward, dir);
+            if (angle < 60)
+            {
+                Vector3 targetPosition = -dir*parriedOffset;
+                targetPosition += parryTarget.transform.position;
+                transform.position = targetPosition;
+                if (dir == Vector3.zero)
+                    dir = -parryTarget.transform.position;
+                Quaternion eRotation = Quaternion.LookRotation(-dir);
+                Quaternion ourRotation = Quaternion.LookRotation(dir);
+
+                parryTarget.transform.rotation = eRotation;
+                transform.rotation = ourRotation;
+                parryTarget.IsGettingParried();
+
+                canMove = false;
+                inAction = true;
+                anim.SetBool("mirror", slot.mirror);
+                anim.CrossFade("parry_attack", 0.2f);
+                return true;
+            }
+            return false;
+        }
+
+        bool CheckForBackstab(Action slot)
+        {
+            if (slot.canBackstab == false)
+                return false;
+            EnemyStates backstab = null;
+            Vector3 origin = transform.position;
+            origin.y += 1;
+            Vector3 rayDir = transform.forward;
+            RaycastHit hit;
+            if (Physics.Raycast(origin, rayDir, out hit, 3, ignoreLayers))
+            {
+                backstab = hit.transform.GetComponentInParent<EnemyStates>();
+            }
+
+            if (backstab == null)
+                return false;
+
+            Vector3 dir = transform.position- backstab.transform.position;
+            dir.Normalize();
+            dir.y = 0;
+            float angle = Vector3.Angle(backstab.transform.forward, dir);
+            if (angle > 150)
+            {
+                Vector3 targetPosition = dir * parriedOffset;
+                targetPosition += backstab.transform.position;
+                transform.position = targetPosition;
+                backstab.transform.rotation = transform.rotation;
+                backstab.IsGettingBackstabed();
+
+                canMove = false;
+                inAction = true;
+                anim.SetBool("mirror", slot.mirror);
+                anim.CrossFade("parry_attack", 0.2f);
+                return true;
+            }
+            return false;
+        }
+
+        void BlockAction(Action slot)
+        {
+            isBlocking = true;
+            isLeftHand = slot.mirror;
+        }
+
+        void ParryAction(Action slot)
+        {
+            string targetAnim = null;
+
+            targetAnim = slot.targetAnim;
+
+            if (string.IsNullOrEmpty(targetAnim))
+                return;
+
+     
+            canMove = false;
+            inAction = true;
+            float targetSpeed = 1;
+            if (slot.changeSpeed)
+            {
+                targetSpeed = slot.animSpeed;
+                if (targetSpeed == 0)
+                    targetSpeed = 1;
+            }
+            anim.SetFloat("animSpeed", targetSpeed);
+            anim.SetBool("mirror", slot.mirror);
+            anim.CrossFade(targetAnim, 0.2f);
+        }
+
+        public void IsGettingParried()
+        {
+            
         }
 
         public void Tick(float d)
@@ -181,7 +393,7 @@ namespace AW
 
         void HandleRolls()
         {
-            if(!rollInput)
+            if(!rollInput || usingItem)
                 return;
 
             float v = vertical;
@@ -190,28 +402,20 @@ namespace AW
             v = moveAmount > 0.3f ? 1 : 0;
             h = 0;
 
-//            if (lockOn)
-//            {
-//                if (Mathf.Abs(v) < 0.3f)
-//                    v = 0;
-//                if (Mathf.Abs(h) < 0.3f)
-//                    h = 0;
-//            }
-//            else
-//            {
-//                v = moveAmount > 0.3f ? 1 : 0;
-//                h = 0;
-//            }
-
             if (v != 0)
             {
                 if (moveDir == Vector3.zero)
                     moveDir = transform.forward;
                 Quaternion targetRot = Quaternion.LookRotation(moveDir);
                 transform.rotation = targetRot;
+                a_hook.rm_multi = rollSpeed;
+                a_hook.InitForRoll();
+            }
+            else
+            {
+                a_hook.rm_multi = 1.3f;                
             }
 
-            a_hook.rm_multi = rollSpeed;
 
             anim.SetFloat("vertical", v);
             anim.SetFloat("horizontal", h);
@@ -219,7 +423,6 @@ namespace AW
             canMove = false;
             inAction = true;
             anim.CrossFade("Rolls", 0.2f);
-
         }
         void HandleMovementAnimations()
         {
@@ -233,7 +436,6 @@ namespace AW
             Vector3 relativeDir = transform.InverseTransformDirection(moveDir);
             float h = relativeDir.x;
             float v = relativeDir.z;
-
             anim.SetFloat("vertical", v, 0.2f, delta);
             anim.SetFloat("horizontal", h, 0.2f, delta);
         }
@@ -241,6 +443,11 @@ namespace AW
         public void HandleTwoHanded()
         {
             anim.SetBool("two_handed",isTwoHanded);
+            if(isTwoHanded)
+                actionManager.UpdateActionsTwoHanded();
+            else
+                actionManager.UpdateActionsTwoHanded();
+
         }
 
         public bool OnGround()

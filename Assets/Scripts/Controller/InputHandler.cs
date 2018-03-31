@@ -21,6 +21,10 @@ namespace AW
         private bool leftAxis_down;
         private bool rightAxis_down;
 
+        private float b_timer;
+        private float lt_timer;
+        private float rt_timer;
+
         private float delta;
         private StateManager states;
         private CameraManager camManager;
@@ -31,13 +35,14 @@ namespace AW
             states.Init();
 
 	        camManager = CameraManager.singleton;
-            camManager.Init(transform);
+            camManager.Init(states);
 	    }
 	
 	    void Update ()
 	    {
 	        delta = Time.deltaTime;
             states.Tick(delta);
+            ResetInputNStates();
 	    }
 
         void FixedUpdate()
@@ -48,6 +53,8 @@ namespace AW
             states.FixedTick(Time.deltaTime);
             camManager.Tick(delta);
         }
+
+        
 
         void GetInput()
         {
@@ -71,7 +78,10 @@ namespace AW
             lb_input = Input.GetButton("LB");
             rb_input = Input.GetButton("RB");
 
-            rightAxis_down = Input.GetButtonUp("L");
+            rightAxis_down = Input.GetButtonUp("L");//L is lockon
+
+            if (b_input)
+                b_timer += delta;
 
         }
 
@@ -85,16 +95,18 @@ namespace AW
             states.moveDir = (v + h).normalized;
             float m = Mathf.Abs(vertical) + Mathf.Abs(horizontal);
             states.moveAmount = Mathf.Clamp01(m);
-            states.rollInput = b_input;
-            if (b_input)
-            {
-                //states.run = states.moveAmount > 0;
-            }
-            else
-            {
-                //states.run = false;
-            }
 
+            if (x_input)
+                b_input = false;
+            
+            if (b_input && b_timer>0.5f)
+            {
+                states.run = states.moveAmount > 0;
+            }
+            if (b_input == false && b_timer > 0 && b_timer < 0.5f)
+                states.rollInput = true;
+
+            states.itemInput = x_input;
             states.rt = rt_input;
             states.rb = rb_input;
             states.lt = lt_input;
@@ -106,17 +118,43 @@ namespace AW
                 states.HandleTwoHanded();
             }
 
+            if (states.lockOnTarget != null)
+            {
+                if (states.lockOnTarget.eState.isDead)
+                {
+                    states.lockOn = false;
+                    states.lockOnTarget = null;
+                    states.LockonTransform = null;
+                    camManager.lockonTarget = null;
+                    camManager.lockon = false;
+                }
+            }
+
             if (rightAxis_down)
             {
                 states.lockOn = !states.lockOn;
                 if (states.lockOnTarget == null)
                     states.lockOn = false;
-                camManager.lockonTarget = states.lockOnTarget.transform;
+                
+                camManager.lockonTarget = states.lockOnTarget;
+                states.LockonTransform = camManager.LockonTransform;
                 camManager.lockon = states.lockOn;
 
             }
 
 
+        }
+
+        private void ResetInputNStates()
+        {
+            if (b_input == false)
+                b_timer = 0;
+
+            if (states.rollInput)
+                states.rollInput = false;
+
+            if (states.run)
+                states.run = false;
         }
     }
 
