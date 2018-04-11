@@ -51,6 +51,21 @@ namespace AW
             {
                 a.mirror = true;
             }
+            a.overrideDamageAnim = w_a.overrideDamageAnim;
+            a.damageAnim = w_a.damageAnim;
+            DeepCopyWeapenStats(w_a.weapenStats,a.weapenStats);
+        }
+
+        void DeepCopyWeapenStats(WeapenStats from, WeapenStats to)
+        {
+            to.physical = from.physical;
+            to.strike = from.strike;
+            to.slash = from.slash;
+            to.thrust = from.thrust;
+            to.magic = from.magic;
+            to.fire = from.fire;
+            to.dark = from.dark;
+            to.lighting = from.lighting;
         }
 
         public void UpdateActionsTwoHanded()
@@ -106,6 +121,11 @@ namespace AW
             return ActionInput.rb;
         }
 
+        public bool IsLeftHand(Action slot)
+        {
+            return slot.input == ActionInput.lb || slot.input == ActionInput.lt;
+        }
+
         ActionManager()
         {
             for (int i = 0; i < 4; i++)
@@ -138,6 +158,12 @@ namespace AW
         public bool changeSpeed = false;
         public float animSpeed = 1;
         public bool canBackstab = false;
+
+        public bool overrideDamageAnim;
+        public string damageAnim;
+
+        public WeapenStats weapenStats;
+   
     }
 
     [System.Serializable]

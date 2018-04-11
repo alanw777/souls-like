@@ -29,6 +29,9 @@ namespace AW
 
         private bool useRightAxis;
 
+        private bool changeTargetLeft;
+        private bool changeTargetRight;
+
         [HideInInspector]
         public Transform pivot;
         [HideInInspector]
@@ -60,6 +63,8 @@ namespace AW
                 targetSpeed = controllerSpeed;
             }
 
+            changeTargetLeft = Input.GetKeyUp(KeyCode.V);
+            changeTargetRight = Input.GetKeyUp(KeyCode.B);
 
             if (lockonTarget != null)
             {
@@ -76,6 +81,11 @@ namespace AW
                         states.LockonTransform = LockonTransform;
                         useRightAxis = true;
                     }
+                }
+                if (changeTargetLeft || changeTargetRight)
+                {
+                    LockonTransform = lockonTarget.GetTarget(changeTargetLeft);
+                    states.LockonTransform = LockonTransform;
                 }
             }
 

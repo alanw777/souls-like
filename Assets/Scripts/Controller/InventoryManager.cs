@@ -18,6 +18,7 @@ namespace AW
             states = st;
             EquipeWeapen(rightHandWeapen, false);
             EquipeWeapen(leftHandWeapen, true);
+            InitAllDamageColliders(st);
             CloseAllDamageColliders();
 
             ParryCollider pr = parryCollider.GetComponent<ParryCollider>();
@@ -29,9 +30,17 @@ namespace AW
         {
             string targetIdle = w.oh_idle;
             targetIdle += isLeft ? "_l" : "_r";
-            states.anim.SetBool("mirror",isLeft);
-            states.anim.Play("changeWeapen");
+            states.anim.SetBool(StaticStrings.mirror, isLeft);
+            states.anim.Play(StaticStrings.changeWeapen);
             states.anim.Play(targetIdle);
+
+            UI.QuickSlot uiSlot = UI.QuickSlot.singleton;
+            uiSlot.UpdateSlot(isLeft?UI.QSlotType.lh:UI.QSlotType.rh,w.icon);
+        }
+
+        public Weapen GetCurrentWeapen(bool isLeft)
+        {
+            return isLeft ? leftHandWeapen : rightHandWeapen;
         }
 
         public void CloseAllDamageColliders()
@@ -40,6 +49,14 @@ namespace AW
                 rightHandWeapen.w_hook.CloseDamageColliders();
             if (leftHandWeapen.w_hook != null)
                 leftHandWeapen.w_hook.CloseDamageColliders();
+        }
+
+        public void InitAllDamageColliders(StateManager st)
+        {
+            if (rightHandWeapen.w_hook != null)
+                rightHandWeapen.w_hook.InitDamageColliders(st);
+            if (leftHandWeapen.w_hook != null)
+                leftHandWeapen.w_hook.InitDamageColliders(st);
         }
 
         public void OpenAllDamageColliders()
@@ -62,11 +79,16 @@ namespace AW
     [System.Serializable]
     public class Weapen
     {
+        public string weapenId;
+        public Sprite icon;
+
         public string oh_idle;
         public string th_idle;
 
         public List<Action> actions;
         public List<Action> two_handenActions;
+        public WeapenStats parryStats;
+        public WeapenStats backstabStats;
         public bool leftHandMirror;
         public GameObject weapenModel;
         public WeapenHook w_hook;

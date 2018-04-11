@@ -31,6 +31,8 @@ namespace AW
 	    // Use this for initialization
 	    void Start ()
 	    {
+            UI.QuickSlot.singleton.Init();
+
 	        states = GetComponent<StateManager>();
             states.Init();
 
@@ -58,27 +60,27 @@ namespace AW
 
         void GetInput()
         {
-            vertical = Input.GetAxis("Vertical");
-            horizontal = Input.GetAxis("Horizontal");
-            b_input = Input.GetButton("B");
-            a_input = Input.GetButton("A");
-            y_input = Input.GetButtonUp("Y");
-            x_input = Input.GetButton("X");
+            vertical = Input.GetAxis(StaticStrings.Vertical);
+            horizontal = Input.GetAxis(StaticStrings.Horizontal);
+            b_input = Input.GetButton(StaticStrings.B);
+            a_input = Input.GetButton(StaticStrings.A);
+            y_input = Input.GetButtonUp(StaticStrings.Y);
+            x_input = Input.GetButton(StaticStrings.X);
 
-            rt_input = Input.GetButton("RT");
-            rt_axis = Input.GetAxis("RT");
+            rt_input = Input.GetButton(StaticStrings.RT);
+            rt_axis = Input.GetAxis(StaticStrings.RT);
             if (rt_axis != 0)
                 rt_input = true;
 
-            lt_input = Input.GetButton("LT");
-            lt_axis = Input.GetAxis("LT");
+            lt_input = Input.GetButton(StaticStrings.LT);
+            lt_axis = Input.GetAxis(StaticStrings.LT);
             if (lt_axis != 0)
                 lt_input = true;
 
-            lb_input = Input.GetButton("LB");
-            rb_input = Input.GetButton("RB");
+            lb_input = Input.GetButton(StaticStrings.LB);
+            rb_input = Input.GetButton(StaticStrings.RB);
 
-            rightAxis_down = Input.GetButtonUp("L");//L is lockon
+            rightAxis_down = Input.GetButtonUp(StaticStrings.L);//L is lockon
 
             if (b_input)
                 b_timer += delta;
@@ -129,15 +131,25 @@ namespace AW
                     camManager.lockon = false;
                 }
             }
+            else
+            {
+                states.lockOn = false;
+                states.lockOnTarget = null;
+                states.LockonTransform = null;
+                camManager.lockonTarget = null;
+                camManager.lockon = false;
+            }
 
             if (rightAxis_down)
             {
                 states.lockOn = !states.lockOn;
+                states.lockOnTarget = EnemyManager.singleton.GetEnemyTarget(transform.position);
                 if (states.lockOnTarget == null)
                     states.lockOn = false;
                 
                 camManager.lockonTarget = states.lockOnTarget;
-                states.LockonTransform = camManager.LockonTransform;
+                states.LockonTransform = states.lockOnTarget.GetTarget();
+                camManager.LockonTransform = states.LockonTransform;
                 camManager.lockon = states.lockOn;
 
             }

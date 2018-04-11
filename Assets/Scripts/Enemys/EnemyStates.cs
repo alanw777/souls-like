@@ -2,12 +2,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace AW
 {
     public class EnemyStates : MonoBehaviour
     {
-        public float health;
+        public int health;
+        public CharacterStats characterStats;
+
         public bool canBenParried = true;
         public bool parryIsOn = true;
         //public bool doParry = false;
@@ -21,6 +24,8 @@ namespace AW
         private AnimatorHook a_hook;
         public Rigidbody rigid;
         public float delta;
+        public float poiseDegrade = 2;
+
         public StateManager parriedBy;
 
         private List<Rigidbody> ragdollRigids=new List<Rigidbody>();
@@ -30,7 +35,7 @@ namespace AW
         // Use this for initialization
         void Start()
         {
-            health = 100;
+            health = 10000;
             anim = GetComponentInChildren<Animator>();
             enTarget = GetComponent<EnemyTarget>();
             enTarget.Init(this);
@@ -86,7 +91,7 @@ namespace AW
         void Update()
         {
             delta = Time.deltaTime;
-            canMove = anim.GetBool("canMove");
+            canMove = anim.GetBool(StaticStrings.canMove);
 
             if (dontDoAnything)
             {
@@ -132,27 +137,45 @@ namespace AW
                     timer = 0;
                 }
             }
-           
 
-            
+            characterStats.poise -= delta*poiseDegrade;
+            if (characterStats.poise < 0)
+                characterStats.poise = 0;
         }
 
         void DoAction()
         {
             anim.Play("oh_attack_1");
             anim.applyRootMotion = true;
-            anim.SetBool("canMove", false);
+            anim.SetBool(StaticStrings.canMove, false);
         }
 
-        public void DoDamage(float v)
+        public void DoDamage(Action a)
         {
             if(isInviciable)
                 return;
-            health -= v;
+
+            int damage = StatsCalculations.CalculateBaseDamage(a.weapenStats, characterStats);
+            characterStats.poise += damage;
+            health -= damage;
+            if (canMove || characterStats.poise > 50)
+            {
+                if (a.overrideDamageAnim)
+                {
+                    anim.Play(a.damageAnim);
+                }
+                else
+                {
+                    int ran = Random.Range(0, 100);
+                    string ta = (ran > 50) ? StaticStrings.damage1 : StaticStrings.damage2;
+                    anim.Play(ta);
+                }
+            }
+            Debug.Log(damage + " , " + characterStats.poise);
+
             isInviciable = true;
-            anim.Play("damage_1");
             anim.applyRootMotion = true;
-            anim.SetBool("canMove",false);
+            anim.SetBool(StaticStrings.canMove, false);
         }
 
         public void CheckForParry(Transform target,StateManager states)
@@ -168,27 +191,29 @@ namespace AW
                 return;
 
             isInviciable = true;
-            anim.Play("attack_interrupt");
+            anim.Play(StaticStrings.attack_interrupt);
             anim.applyRootMotion = true;
-            anim.SetBool("canMove", false);
+            anim.SetBool(StaticStrings.canMove, false);
             //states.parryTarget = this;
             parriedBy = states;
         }
 
-        public void IsGettingParried()
+        public void IsGettingParried(WeapenStats weapenStats)
         {
-            health -= 500;
+            int damage = StatsCalculations.CalculateBaseDamage(weapenStats, characterStats);
+            health -= damage;
             dontDoAnything = true;
-            anim.SetBool("canMove", false);
-            anim.Play("parry_recieved");
+            anim.SetBool(StaticStrings.canMove, false);
+            anim.Play(StaticStrings.parry_recieved);
         }
 
-        public void IsGettingBackstabed()
+        public void IsGettingBackstabed(WeapenStats weapenStats)
         {
-            health -= 500;
+            int damage = StatsCalculations.CalculateBaseDamage(weapenStats, characterStats);
+            health -= damage;
             dontDoAnything = true;
-            anim.SetBool("canMove", false);
-            anim.Play("getting_backstabbed");
+            anim.SetBool(StaticStrings.canMove, false);
+            anim.Play(StaticStrings.getting_backstabbed);
         }
     }
 

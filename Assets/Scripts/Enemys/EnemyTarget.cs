@@ -25,6 +25,8 @@ namespace AW
             {
                 targets.Add(anim.GetBoneTransform(h_bones[i]));
             }
+
+            EnemyManager.singleton.enemyTargets.Add(this);
         }
 
         public Transform GetTarget(bool negative = false)
