@@ -35,7 +35,7 @@ namespace AW
         // Use this for initialization
         void Start()
         {
-            health = 10000;
+            health = 100;
             anim = GetComponentInChildren<Animator>();
             enTarget = GetComponent<EnemyTarget>();
             enTarget.Init(this);
@@ -171,7 +171,7 @@ namespace AW
                     anim.Play(ta);
                 }
             }
-            Debug.Log(damage + " , " + characterStats.poise);
+//            Debug.Log(damage + " , " + characterStats.poise);
 
             isInviciable = true;
             anim.applyRootMotion = true;
@@ -194,22 +194,22 @@ namespace AW
             anim.Play(StaticStrings.attack_interrupt);
             anim.applyRootMotion = true;
             anim.SetBool(StaticStrings.canMove, false);
-            //states.parryTarget = this;
+        
             parriedBy = states;
         }
 
-        public void IsGettingParried(WeapenStats weapenStats)
+        public void IsGettingParried(Action a)
         {
-            int damage = StatsCalculations.CalculateBaseDamage(weapenStats, characterStats);
+            int damage = StatsCalculations.CalculateBaseDamage(a.weapenStats, characterStats, a.parryMultiplier);
             health -= damage;
             dontDoAnything = true;
             anim.SetBool(StaticStrings.canMove, false);
             anim.Play(StaticStrings.parry_recieved);
         }
 
-        public void IsGettingBackstabed(WeapenStats weapenStats)
+        public void IsGettingBackstabed(Action a)
         {
-            int damage = StatsCalculations.CalculateBaseDamage(weapenStats, characterStats);
+            int damage = StatsCalculations.CalculateBaseDamage(a.weapenStats, characterStats, a.backstabMultiplier);
             health -= damage;
             dontDoAnything = true;
             anim.SetBool(StaticStrings.canMove, false);

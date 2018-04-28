@@ -122,7 +122,7 @@ namespace AW
             usingItem = anim.GetBool(StaticStrings.interacting);
             DetectAction();
             DetectItemAction();
-          
+
             inventoryManager.rightHandWeapen.weapenModel.SetActive(!usingItem);
 
             anim.SetBool(StaticStrings.blocking, isBlocking);
@@ -275,6 +275,9 @@ namespace AW
 
         bool CheckForParry(Action slot)
         {
+            if (slot.canParry == false)
+                return false;
+
             EnemyStates parryTarget = null;
             Vector3 origin = transform.position;
             origin.y += 1;
@@ -307,7 +310,7 @@ namespace AW
 
                 parryTarget.transform.rotation = eRotation;
                 transform.rotation = ourRotation;
-                parryTarget.IsGettingParried(inventoryManager.GetCurrentWeapen(isLeftHand).parryStats);
+                parryTarget.IsGettingParried(slot);
 
                 canMove = false;
                 inAction = true;
@@ -345,13 +348,13 @@ namespace AW
                 targetPosition += backstab.transform.position;
                 transform.position = targetPosition;
                 backstab.transform.rotation = transform.rotation;
-                backstab.IsGettingBackstabed(inventoryManager.GetCurrentWeapen(isLeftHand).backstabStats);
+                backstab.IsGettingBackstabed(slot);
 
                 canMove = false;
                 inAction = true;
                 anim.SetBool(StaticStrings.mirror, slot.mirror);
                 anim.CrossFade(StaticStrings.parry_attack, 0.2f);
-                lockOnTarget = null;
+                //lockOnTarget = null;
                 return true;
             }
             return false;
@@ -385,7 +388,7 @@ namespace AW
             anim.SetFloat(StaticStrings.animSpeed, targetSpeed);
             anim.SetBool(StaticStrings.mirror, slot.mirror);
             anim.CrossFade(targetAnim, 0.2f);
-            lockOnTarget = null;
+            //lockOnTarget = null;
         }
 
         public void IsGettingParried()
@@ -452,11 +455,50 @@ namespace AW
 
         public void HandleTwoHanded()
         {
-            anim.SetBool(StaticStrings.two_handed, isTwoHanded);
-            if(isTwoHanded)
+            bool isRight = true;
+            Weapen w = inventoryManager.rightHandWeapen.instance;
+            if (w == null)
+            {
+                w = inventoryManager.leftHandWeapen.instance;
+                isRight = false;
+            }
+            if(w==null)
+                return;
+            if (isTwoHanded)
+            {
+                anim.CrossFade(w.th_idle,0.2f);
                 actionManager.UpdateActionsTwoHanded();
+                if (isRight)
+                {
+                    if (inventoryManager.leftHandWeapen)
+                    {
+                        inventoryManager.leftHandWeapen.weapenModel.SetActive(false);
+                    }
+                        
+                }
+                else
+                {
+                    if (inventoryManager.rightHandWeapen)
+                        inventoryManager.rightHandWeapen.weapenModel.SetActive(false);
+                }
+            }
             else
-                actionManager.UpdateActionsTwoHanded();
+            {
+                anim.Play(StaticStrings.changeWeapen);
+                anim.Play(StaticStrings.emptyBoth);
+                actionManager.UpdateActionsOneHanded();
+                if (isRight)
+                {
+                    if (inventoryManager.leftHandWeapen)
+                        inventoryManager.leftHandWeapen.weapenModel.SetActive(true);
+                }
+                else
+                {
+                    if (inventoryManager.rightHandWeapen)
+                        inventoryManager.rightHandWeapen.weapenModel.SetActive(true);
+                }
+            }
+                
 
         }
 

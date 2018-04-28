@@ -21,6 +21,13 @@ namespace AW
         private bool leftAxis_down;
         private bool rightAxis_down;
 
+        private float d_x;
+        private float d_y;
+        private bool d_up;
+        private bool d_down;
+        private bool d_right;
+        private bool d_left;
+
         private float b_timer;
         private float lt_timer;
         private float rt_timer;
@@ -84,6 +91,16 @@ namespace AW
 
             if (b_input)
                 b_timer += delta;
+
+            d_x = Input.GetAxis(StaticStrings.Pad_X);
+            d_y = Input.GetAxis(StaticStrings.Pad_Y);
+
+            d_up = Input.GetKeyUp(KeyCode.Alpha1) || d_x > 0;
+            d_down = Input.GetKeyUp(KeyCode.Alpha2) || d_x < 0;
+            d_left = Input.GetKeyUp(KeyCode.Alpha3) || d_y < 0;
+            d_right = Input.GetKeyUp(KeyCode.Alpha4) || d_y > 0;
+
+
 
         }
 
@@ -154,6 +171,10 @@ namespace AW
 
             }
 
+            if(d_left)
+                states.inventoryManager.ChangeToNextWeapen(true);
+            if(d_right)
+                states.inventoryManager.ChangeToNextWeapen(false);
 
         }
 
