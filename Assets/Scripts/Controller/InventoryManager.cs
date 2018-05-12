@@ -18,12 +18,16 @@ namespace AW
 
         private readonly List<RuntimeWeapen> r_r_weapens = new List<RuntimeWeapen>();
         private readonly List<RuntimeWeapen> r_l_weapens = new List<RuntimeWeapen>();
+        private readonly List<RuntimeSpellItems> r_spells = new List<RuntimeSpellItems>(); 
+
         public RuntimeWeapen leftHandWeapen;
         public RuntimeWeapen rightHandWeapen;
  
         public bool hasLeftHandWeapen = true;
 
         public GameObject parryCollider;
+        public GameObject breathCollider;
+        public GameObject blockCollider;
 
         private StateManager states;
         public void Init(StateManager st)
@@ -35,6 +39,8 @@ namespace AW
             ParryCollider pr = parryCollider.GetComponent<ParryCollider>();
             pr.InitPlayer(states);
             CloseParryCollider();
+            CloseBreathCollider();
+            CloseBlockCollider();
         }
 
         private void LoadInventory(StateManager st)
@@ -61,14 +67,13 @@ namespace AW
 
                 leftHandWeapen = r_l_weapens[l_index];
             }
-
-            if (spell_items.Count > 0)
+            for (int i = 0; i < spell_items.Count; i++)
             {
-                currentSpell = SpellToRuntimeSpell(ResourcesManager.singleton.GetSpell(spell_items[0]));
+                SpellToRuntimeSpell(ResourcesManager.singleton.GetSpell(spell_items[i]));
             }
-            if (currentSpell)
+            if (r_spells.Count > 0)
             {
-                EquipSpell(currentSpell);
+                EquipSpell(r_spells[0]);
             }
 
             if (rightHandWeapen != null)
@@ -115,10 +120,11 @@ namespace AW
             w.weapenModel.SetActive(true);
         }
 
-        public void EquipSpell(RuntimeSpellItems s)
+        public void EquipSpell(RuntimeSpellItems spell)
         {
+            currentSpell = spell;
             UI.QuickSlot uislot = UI.QuickSlot.singleton;
-            uislot.UpdateSlot(UI.QSlotType.spell,s.instance.icon);
+            uislot.UpdateSlot(UI.QSlotType.spell, spell.instance.icon);
         }
 
         public Weapen GetCurrentWeapen(bool isLeft)
@@ -207,17 +213,81 @@ namespace AW
                 
                 EquipeWeapen(r_r_weapens[r_index], false);
             }
+            states.actionManager.UpdateActionsOneHanded();
+            InitAllDamageColliders(states);
+            CloseAllDamageColliders();
         }
-        public RuntimeSpellItems SpellToRuntimeSpell(Spell s)
+
+        public void ChangeToNextSpell()
+        {
+            if (s_index < r_spells.Count - 1)
+                s_index++;
+            else
+                s_index = 0;
+
+            EquipSpell(r_spells[s_index]);
+        }
+
+        public RuntimeSpellItems SpellToRuntimeSpell(Spell s,bool isLeft = false)
         {
             GameObject go = new GameObject();
             RuntimeSpellItems inst = go.AddComponent<RuntimeSpellItems>();
             inst.instance = new Spell();
             StaticFunctions.DeepCopySpell(s,inst.instance);
             go.name = s.itemName;
-
+            r_spells.Add(inst);
             return inst;
         }
+
+        public void CreateSpellPartcle(RuntimeSpellItems inst, bool isLeft , bool parentUnderRoot = false)
+        {
+            if (inst.currentParticle == null)
+            {
+                inst.currentParticle = Instantiate(inst.instance.particlePrefab) as GameObject;
+                inst.p_hook = inst.currentParticle.GetComponentInChildren<ParticleHook>();
+                inst.p_hook.Init();
+            }
+
+            if (!parentUnderRoot)
+            {
+                Transform p = states.anim.GetBoneTransform(isLeft ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
+                inst.currentParticle.transform.parent = p;
+                inst.currentParticle.transform.localRotation = Quaternion.identity;
+                inst.currentParticle.transform.localPosition = Vector3.zero;
+            }
+            else
+            {
+                inst.currentParticle.transform.parent = transform;
+                inst.currentParticle.transform.localRotation = Quaternion.identity;
+                inst.currentParticle.transform.localPosition = new Vector3(0,1.5f,0.9f);
+            }
+        }
+        #region Delegate Calls
+        public void OpenBreathCollider()
+        {
+            breathCollider.SetActive(true);
+        }
+
+        public void CloseBreathCollider()
+        {
+            breathCollider.SetActive(false);
+        }
+
+        public void OpenBlockCollider()
+        {
+            blockCollider.SetActive(true);
+        }
+
+        public void CloseBlockCollider()
+        {
+            blockCollider.SetActive(false);
+        }
+
+        public void EmitSpellPartcle()
+        {
+            currentSpell.p_hook.Emit(1);
+        }
+        #endregion
     }
 
     [System.Serializable]
@@ -231,8 +301,6 @@ namespace AW
     [System.Serializable]
     public class Weapen : Item
     {
-       
-
         public string oh_idle;
         public string th_idle;
 
@@ -249,10 +317,10 @@ namespace AW
         public Vector3 r_model_pos;
         public Vector3 r_model_eulers;
         public Vector3 model_scale;
-
-
         public Action GetAction(List<Action> l, ActionInput input)
         {
+            if (l == null)
+                return null;
             for (int i = 0; i < l.Count; i++)
             {
                 if (input == l[i].input)
@@ -267,8 +335,25 @@ namespace AW
     public class Spell : Item
     {
         public SpellType spellType;
+        public SpellClass spellClass;
+        public List<SpellAction> actions = new List<SpellAction>(); 
         public GameObject projectile;
         public GameObject particlePrefab;
+        public string spell_effect;
+
+        public SpellAction GetAction(List<SpellAction> l, ActionInput input)
+        {
+            if (l == null)
+                return null;
+            for (int i = 0; i < l.Count; i++)
+            {
+                if (input == l[i].input)
+                {
+                    return l[i];
+                }
+            }
+            return null;
+        }
     }
 
     

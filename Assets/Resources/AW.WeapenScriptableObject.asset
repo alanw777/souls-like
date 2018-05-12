@@ -122,7 +122,7 @@ MonoBehaviour:
     th_idle: th_idle
     actions:
     - input: 0
-      type: 0
+      type: 2
       spellClass: 0
       targetAnim: oh_attack_1
       mirror: 0
@@ -147,7 +147,7 @@ MonoBehaviour:
     two_handenActions: []
     parryMultiplier: 0
     backstabMultiplier: 0
-    leftHandMirror: 0
+    leftHandMirror: 1
     modelPrefab: {fileID: 1398579324849254, guid: 1962de8620cbdec4dadefae8c4cca867,
       type: 2}
     l_model_pos: {x: 0.01, y: 0.028, z: 0.003}

@@ -27,6 +27,10 @@ namespace AW
         private bool d_down;
         private bool d_right;
         private bool d_left;
+        private bool p_d_up;
+        private bool p_d_down;
+        private bool p_d_right;
+        private bool p_d_left;
 
         private float b_timer;
         private float lt_timer;
@@ -95,10 +99,10 @@ namespace AW
             d_x = Input.GetAxis(StaticStrings.Pad_X);
             d_y = Input.GetAxis(StaticStrings.Pad_Y);
 
-            d_up = Input.GetKeyUp(KeyCode.Alpha1) || d_x > 0;
-            d_down = Input.GetKeyUp(KeyCode.Alpha2) || d_x < 0;
-            d_left = Input.GetKeyUp(KeyCode.Alpha3) || d_y < 0;
-            d_right = Input.GetKeyUp(KeyCode.Alpha4) || d_y > 0;
+            d_up = Input.GetKeyUp(KeyCode.Alpha1) || d_y > 0;
+            d_down = Input.GetKeyUp(KeyCode.Alpha2) || d_y < 0;
+            d_left = Input.GetKeyUp(KeyCode.Alpha3) || d_x < 0;
+            d_right = Input.GetKeyUp(KeyCode.Alpha4) || d_x > 0;
 
 
 
@@ -171,11 +175,52 @@ namespace AW
 
             }
 
-            if(d_left)
-                states.inventoryManager.ChangeToNextWeapen(true);
-            if(d_right)
-                states.inventoryManager.ChangeToNextWeapen(false);
+            HandleQuickSlotChanges();
+        }
 
+        private void HandleQuickSlotChanges()
+        {
+            if(states.usingItem||states.isSpellCasting)
+                return;
+
+            if (d_up)
+            {
+                if (!p_d_up)
+                {
+                    states.inventoryManager.ChangeToNextSpell();
+                    p_d_up = true;
+                }
+            }
+            if (!d_down)
+                p_d_down = false;
+            if (!d_up)
+                p_d_up = false;
+
+            if(states.canMove==false)
+                return;
+            if(states.isTwoHanded)
+                return;
+            
+            if (d_left)
+            {
+                if (!p_d_left)
+                {
+                    states.inventoryManager.ChangeToNextWeapen(true);
+                    p_d_left = true;
+                }
+            }
+            if (d_right)
+            {
+                if (!p_d_right)
+                {
+                    states.inventoryManager.ChangeToNextWeapen(false);
+                    p_d_right = true;
+                }
+            }
+            if (!d_right)
+                p_d_right = false;
+            if (!d_left)
+                p_d_left = false;
         }
 
         private void ResetInputNStates()

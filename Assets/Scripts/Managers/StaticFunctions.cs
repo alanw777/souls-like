@@ -107,13 +107,30 @@ namespace AW
         public static void DeepCopySpell(Spell from, Spell to)
         {
             to.spellType = from.spellType;
+            to.spellClass = from.spellClass;
             to.particlePrefab = from.particlePrefab;
             to.projectile = from.projectile;
             to.icon = from.icon;
             to.itemDescription = from.itemDescription;
             to.itemName = from.itemName;
+            to.spell_effect = from.spell_effect;
 
+            to.actions = new List<SpellAction>();
+            for (int i = 0; i < from.actions.Count; i++)
+            {
+                SpellAction a = new SpellAction();
+                DeepCopySpellAction(from.actions[i], a);
+                to.actions.Add(a);
+            }
         }
+
+        public static void DeepCopySpellAction(SpellAction from, SpellAction to)
+        {
+            to.targetAnim = from.targetAnim;
+            to.castTime = from.castTime;
+            to.input = from.input;
+            to.throwAnim = from.throwAnim;
+        } 
     }
 
 }

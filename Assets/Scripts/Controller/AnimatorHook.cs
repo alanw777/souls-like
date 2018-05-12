@@ -146,6 +146,23 @@ namespace AW
             if (eStates)
                 eStates.parryIsOn = false;
         }
+
+        public void CloseParticle()
+        {
+            if (states)
+            {
+//                if(states.inventoryManager.currentSpell.currentParticle!=null)
+//                    states.inventoryManager.currentSpell.currentParticle.SetActive(false);
+            }
+        }
+
+        public void InitiateThrowForProjectile()
+        {
+            if (states)
+            {
+                states.ThrowProjectile();
+            }
+        }
     }
 
 

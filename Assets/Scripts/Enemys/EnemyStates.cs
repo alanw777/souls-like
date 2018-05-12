@@ -32,6 +32,10 @@ namespace AW
         private List<Collider> ragdollColliders=new List<Collider>();
         private float _actionDelay;
         private float timer;
+
+        public delegate void SpellEffect_Loop();
+
+        public SpellEffect_Loop spellEffect_loop;
         // Use this for initialization
         void Start()
         {
@@ -93,6 +97,9 @@ namespace AW
             delta = Time.deltaTime;
             canMove = anim.GetBool(StaticStrings.canMove);
 
+            if (spellEffect_loop != null)
+                spellEffect_loop();
+
             if (dontDoAnything)
             {
                 dontDoAnything = !canMove;
@@ -148,6 +155,15 @@ namespace AW
             anim.Play("oh_attack_1");
             anim.applyRootMotion = true;
             anim.SetBool(StaticStrings.canMove, false);
+        }
+
+        //test
+        public void DoDamage_()
+        {
+            if(isInviciable)
+                return;
+
+            anim.Play("damage_3");
         }
 
         public void DoDamage(Action a)
@@ -214,6 +230,26 @@ namespace AW
             dontDoAnything = true;
             anim.SetBool(StaticStrings.canMove, false);
             anim.Play(StaticStrings.getting_backstabbed);
+        }
+
+        public ParticleSystem fireParticle;
+        float _t;
+
+        public void OnFire()
+        {
+            if(fireParticle==null)
+                return;
+
+            if (_t < 2)
+            {
+                _t += Time.deltaTime;
+                fireParticle.Emit(1);
+            }
+            else
+            {
+                _t = 0; 
+                spellEffect_loop = null;
+            }
         }
     }
 

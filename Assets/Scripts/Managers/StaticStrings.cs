@@ -44,6 +44,7 @@ namespace AW
         public static string emptyBoth = "Empty Both";
         public static string emptyLeft = "Empty Left";
         public static string emptyRight = "Empty Right";
+        public static string spellcasting = "spellcasting";
 
         //data
         public static string itemFolder = "/Items/";

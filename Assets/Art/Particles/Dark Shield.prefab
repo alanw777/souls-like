@@ -36,7 +36,7 @@ GameObject:
   serializedVersion: 5
   m_Component:
   - component: {fileID: 4043009580737892}
-  - component: {fileID: 114273969663292866}
+  - component: {fileID: 114166716679777190}
   m_Layer: 0
   m_Name: Dark Shield
   m_TagString: Untagged
@@ -102,7 +102,7 @@ Transform:
   m_Father: {fileID: 4043009580737892}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &114273969663292866
+--- !u!114 &114166716679777190
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_PrefabParentObject: {fileID: 0}
@@ -110,9 +110,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1497246781728562}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ea05783938983f84486631c642beb555, type: 3}
+  m_Script: {fileID: 11500000, guid: 94731ef3daf3fba4da0b0a7478f67fa9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  particles: []
 --- !u!198 &198312050661027242
 ParticleSystem:
   m_ObjectHideFlags: 1
@@ -172,7 +173,7 @@ ParticleSystem:
   moveWithTransform: 0
   moveWithCustomTransform: {fileID: 0}
   scalingMode: 1
-  randomSeed: -1113991901
+  randomSeed: 1196419064
   InitialModule:
     serializedVersion: 3
     enabled: 1
@@ -568,7 +569,7 @@ ParticleSystem:
         m_PostInfinity: 2
         m_RotationOrder: 4
     randomizeRotationDirection: 0
-    maxNumParticles: 1000
+    maxNumParticles: 100
     size3D: 0
     rotation3D: 0
     gravityModifier:
@@ -3368,7 +3369,7 @@ ParticleSystem:
   moveWithTransform: 0
   moveWithCustomTransform: {fileID: 0}
   scalingMode: 1
-  randomSeed: 1479684824
+  randomSeed: -1033426419
   InitialModule:
     serializedVersion: 3
     enabled: 1
@@ -6519,7 +6520,7 @@ ParticleSystemRenderer:
   m_LightProbeUsage: 0
   m_ReflectionProbeUsage: 0
   m_Materials:
-  - {fileID: 2100000, guid: 21055a2c86658b64889c96c303320a79, type: 2}
+  - {fileID: 2100000, guid: d8f4b48f25c2bb5479dae153f83e2db6, type: 2}
   - {fileID: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0
@@ -6571,7 +6572,7 @@ ParticleSystemRenderer:
   m_LightProbeUsage: 0
   m_ReflectionProbeUsage: 0
   m_Materials:
-  - {fileID: 2100000, guid: 59f70b73143c2674ca42b334a9093a1c, type: 2}
+  - {fileID: 2100000, guid: f158cf6d0d4e3c44093c05dc9f3f8c61, type: 2}
   - {fileID: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0

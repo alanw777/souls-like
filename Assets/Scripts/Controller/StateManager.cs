@@ -35,6 +35,7 @@ namespace AW
         public bool run;
         public bool lockOn;
         public bool inAction;
+        public bool isSpellCasting;
         public bool canMove;
         public bool isTwoHanded;
         public bool usingItem;
@@ -120,6 +121,7 @@ namespace AW
 
             isBlocking = false;
             usingItem = anim.GetBool(StaticStrings.interacting);
+            anim.SetBool(StaticStrings.spellcasting,isSpellCasting);
             DetectAction();
             DetectItemAction();
 
@@ -148,15 +150,14 @@ namespace AW
             if(!canMove)
                 return;
 
-            a_hook.CloseRoll();
-            HandleRolls();
+           
             
 
             anim.applyRootMotion = false;
 
             rigid.drag = (moveAmount > 0 || onGround==false) ? 0 : 4;
             float targetSpeed = moveSpeed;
-            if (usingItem)
+            if (usingItem || isSpellCasting)
             {
                 run = false;
                 moveAmount = Mathf.Clamp(moveAmount, 0, 0.5f);
@@ -169,6 +170,27 @@ namespace AW
             if (run)
                 lockOn = false;
 
+            HandleRotation();
+
+            anim.SetBool(StaticStrings.lockon, lockOn);
+            if (lockOn)
+                HandleLockonAnimations(moveDir);
+            else
+                HandleMovementAnimations();
+
+            if (isSpellCasting)
+            {
+                HandleSpellcasting();
+                return;
+            }
+            
+
+            a_hook.CloseRoll();
+            HandleRolls();
+        }
+
+        private void HandleRotation()
+        {
             Vector3 targetDir;
             if (lockOn == false)
                 targetDir = moveDir;
@@ -186,14 +208,6 @@ namespace AW
             Quaternion tr = Quaternion.LookRotation(targetDir);
             Quaternion targetRotation = Quaternion.Slerp(transform.rotation, tr, delta*moveAmount*rotateSpeed);
             transform.rotation = targetRotation;
-
-            anim.SetBool(StaticStrings.lockon, lockOn);
-            if (lockOn)
-                HandleLockonAnimations(moveDir);
-            else
-                HandleMovementAnimations();
-
-
         }
 
         void DetectItemAction()
@@ -212,7 +226,7 @@ namespace AW
 
         void DetectAction()
         {
-            if(canMove==false || usingItem)
+            if(canMove==false || usingItem || isSpellCasting)
                 return;
 
             if(rt==false && rb==false && lt==false && lb==false)
@@ -230,6 +244,7 @@ namespace AW
                     BlockAction(slot);
                     break;
                 case ActionType.spells:
+                    SpellAction(slot);
                     break;
                 case ActionType.parry:
                     ParryAction(slot);
@@ -239,6 +254,122 @@ namespace AW
             }
             
 
+        }
+
+        private void SpellAction(Action slot)
+        {
+            
+            if (slot.spellClass != inventoryManager.currentSpell.instance.spellClass)
+            {
+                Debug.Log("Spell Class doesn't match");
+                return;
+            }
+
+            ActionInput inp = actionManager.GetActionInput(this);
+            if(inp == ActionInput.lb)
+                inp = ActionInput.rb;
+            if(inp == ActionInput.lt)
+                inp = ActionInput.rt;
+            Spell s_inst = inventoryManager.currentSpell.instance;
+            SpellAction s_slots = s_inst.GetAction(s_inst.actions, inp);
+            if (s_slots == null)
+            {
+                Debug.Log("can not find spell slot");
+                return;
+            }
+
+            SpellEffectsManager.singleton.UseSpellEffect(s_inst.spell_effect,this);
+
+            isSpellCasting = true;
+            spellcastTime = 0;
+            maxSpellcastTime = s_slots.castTime;
+            spellTargetAnim = s_slots.throwAnim;
+            spellMirror = slot.mirror;
+            curSpellType = s_inst.spellType;
+
+            string targetAnim = s_slots.targetAnim;
+            if (spellMirror)
+            {
+                targetAnim += "_l";
+            }
+            else
+            {
+                targetAnim += "_r";
+            }
+            anim.SetBool(StaticStrings.spellcasting,true);
+            anim.SetBool(StaticStrings.mirror, spellMirror);
+            projectileCanidate = inventoryManager.currentSpell.instance.projectile;
+            inventoryManager.CreateSpellPartcle(inventoryManager.currentSpell, spellMirror,s_inst.spellType==SpellType.looping);
+            anim.CrossFade(targetAnim, 0.2f);
+
+            if (spellcast_start != null)
+                spellcast_start();
+        }
+
+        private float spellcastTime;
+        private float maxSpellcastTime;
+        private string spellTargetAnim;
+        private bool spellMirror;
+        private GameObject projectileCanidate;
+        private SpellType curSpellType;
+
+        public delegate void SpellCast_Start();
+        public delegate void SpellCast_Loop();
+        public delegate void SpellCast_Stop();
+
+        public SpellCast_Start spellcast_start;
+        public SpellCast_Loop spellcast_loop;
+        public SpellCast_Stop spellcast_stop;
+
+
+        void HandleSpellcasting()
+        {
+            if (spellcast_loop != null)
+                spellcast_loop();
+            if (curSpellType == SpellType.looping)
+            {
+                if (rb == false && lb == false)
+                {
+                    if (spellcast_stop != null)
+                        spellcast_stop();
+                    isSpellCasting = false;
+                    return;
+                }
+                return;
+            }
+
+            spellcastTime += delta;
+            if (spellcastTime > maxSpellcastTime)
+            {
+                isSpellCasting = false;
+                canMove = false;
+                inAction = true;
+
+                spellcastTime = 0;
+                string targetAnim = spellTargetAnim;
+                anim.SetBool(StaticStrings.mirror, spellMirror);
+                anim.CrossFade(targetAnim, 0.2f);
+            }
+        }
+
+        public void ThrowProjectile()
+        {
+            if(projectileCanidate==null)
+                return;
+
+            GameObject go = Instantiate(projectileCanidate) as GameObject;
+            Transform p = anim.GetBoneTransform(spellMirror ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
+            go.transform.position = p.position;
+            if (LockonTransform && lockOn)
+            {
+                go.transform.rotation = Quaternion.LookRotation(LockonTransform.position + new Vector3(0, 1.5f, 0) - go.transform.position);
+            }
+            else
+            {
+                go.transform.rotation = transform.rotation;
+            }
+            Projectile projectile = go.GetComponent<Projectile>();
+            projectile.Init();
         }
 
         void AttackAction(Action slot)
@@ -517,6 +648,11 @@ namespace AW
             }
 
             return r;
+        }
+
+        public void AddHealth()
+        {
+            characterStats.hp++;
         }
     }
 
